@@ -1693,36 +1693,63 @@ app.post(
         // Retry temporary errors
 
         if (
-          [
-            429,
-            500,
-            502,
-            503,
-            504
-          ].includes(
-            Number(
-              firstError?.status
-            )
-          )
-        ) {
+  [
+    429,
+    500,
+    502,
+    503,
+    504
+  ].includes(
+    Number(firstError?.status)
+  )
+) {
 
-          await new Promise(
-            resolve =>
-              setTimeout(
-                resolve,
-                700
-              )
-          );
+  let lastError = firstError;
 
-          result =
-            await chat.sendMessage(
-              current
-            );
+  for (
+    let attempt = 1;
+    attempt <= 3;
+    attempt++
+  ) {
 
-        } else {
-          throw firstError;
-        }
-      }
+    const delay =
+      2000 * Math.pow(2, attempt - 1);
+
+    await new Promise(
+      resolve =>
+        setTimeout(resolve, delay)
+    );
+
+    try {
+
+      result =
+        await chat.sendMessage(
+          current
+        );
+
+      lastError = null;
+      break;
+
+    } catch (retryError) {
+
+      lastError = retryError;
+
+      console.error(
+        `Gemini retry ${attempt} failed:`,
+        retryError
+      );
+    }
+  }
+
+  if (!result) {
+    throw lastError;
+  }
+
+} else {
+
+  throw firstError;
+
+}
 
       // ==================================================
       // GET ANSWER
